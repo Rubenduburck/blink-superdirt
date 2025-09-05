@@ -20,6 +20,28 @@ local function read_lines(path)
   return out
 end
 
+local function read_synth_params(path)
+  local fd = uv.fs_open(path, "r", 438)
+  if not fd then return {} end
+  local stat = uv.fs_fstat(fd); if not stat then uv.fs_close(fd); return {} end
+  local data = uv.fs_read(fd, stat.size, 0) or ""
+  uv.fs_close(fd)
+  local params = {}
+  for line in data:gmatch("[^\r\n]+") do
+    if line ~= "" then
+      local synth, param_str = line:match("^([^%s]+)%s*%->%s*(.*)$")
+      if synth and param_str then
+        local synth_params = {}
+        for param, default in param_str:gmatch("([^:]+):([^%s]+)") do
+          synth_params[#synth_params+1] = { name = param, default = default }
+        end
+        params[synth] = synth_params
+      end
+    end
+  end
+  return params
+end
+
 local function in_sound_context(before)
   local q = before:reverse():find('"', 1, true)
   if not q then return false end
@@ -68,12 +90,23 @@ function Source:_load()
   end
 
   if self.opts.include_synths then
+    local synth_params = read_synth_params(dir .. "/synth_params.txt")
     for _, name in ipairs(read_lines(dir .. "/synths.txt")) do
+      local params = synth_params[name]
+      local detail = nil
+      if params and #params > 0 then
+        local param_names = {}
+        for i, p in ipairs(params) do
+          param_names[i] = p.name
+        end
+        detail = "params: " .. table.concat(param_names, ", ")
+      end
       items[#items+1] = {
         label = name,
         insertText = name,
         kind = K.Function,              -- synth
         labelDescription = "synth",
+        detail = detail,
       }
     end
   end
