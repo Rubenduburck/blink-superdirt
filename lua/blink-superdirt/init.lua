@@ -1,20 +1,9 @@
-local M = {}
+-- blink-superdirt main module
+-- Exports the 'new' function required by blink.cmp
 
-M.defaults = {
-  dir = vim.fn.expand("~/.cache/tidal-autocomplete"),
-  include_synths = true,
-  include_samples = true,
+local source = require("blink-superdirt.source")
+
+-- Export the new function directly for blink.cmp
+return {
+  new = source.new
 }
-
-M.config = M.defaults
-
-function M.setup(opts)
-  M.config = vim.tbl_deep_extend("force", M.defaults, opts or {})
-end
-
-function M.create_source()
-  local source = require("blink-superdirt.source")
-  return source.new(M.config)
-end
-
-return M
